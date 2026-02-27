@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantumX — RPi Smart Segregator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr-left">
+    <div class="sys-indicator"><span class="sys-dot" id="sysDot"></span><span id="sysText">CONNECTING...</span></div>
+    <div class="ver-tag">RPi EDITION · v3.0</div>
+  </div>
+  <div class="hdr-center">
+    <svg class="logo-hex" viewBox="0 0 60 60">
+      <polygon points="30,2 56,16 56,44 30,58 4,44 4,16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <polygon points="30,10 48,20 48,40 30,50 12,40 12,20" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.4"/>
+      <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="13" font-family="Bebas Neue" fill="currentColor">QX</text>
+    </svg>
+    <div>
+      <h1>QUANTUMX</h1>
+      <div class="hdr-sub">SMART WASTE SEGREGATION · RASPBERRY Pi</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div id="clockTime">--:--:--</div>
+    <div class="model-tag" id="modelTag">YOLO · RPi</div>
+    <div class="ir-indicator" id="irIndicator">
+      <span class="ir-dot" id="irDot"></span>IR SENSOR
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- CAMERA -->
+  <section class="panel cam-panel">
+    <div class="panel-hdr">
+      <span class="ph-title">LIVE FEED</span>
+      <div class="hdr-badges">
+        <span class="badge badge-green"><span class="dot-blink"></span>LIVE</span>
+        <span class="badge" id="stepBadge">IDLE</span>
+      </div>
+    </div>
+    <div class="cam-frame">
+      <img src="/video" alt="Camera Feed" id="camFeed">
+      <div class="cam-ui">
+        <div class="rc tl"></div><div class="rc tr"></div>
+        <div class="rc bl"></div><div class="rc br"></div>
+        <div class="scan-sweep" id="scanSweep"></div>
+        <div class="cam-bar">
+          <span>CAM-01</span><span>640×480</span><span id="camMode">READY</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- IR + Manual trigger -->
+    <div class="trigger-row">
+      <div class="ir-status-box" id="irBox">
+        <div class="ir-icon">📡</div>
+        <div>
+          <div class="ir-label">IR SENSOR</div>
+          <div class="ir-val" id="irVal">CLEAR</div>
+        </div>
+      </div>
+      <button class="btn-detect" id="detectBtn" onclick="manualTrigger()">
+        ▶ MANUAL TRIGGER
+        <div class="btn-shine"></div>
+      </button>
+    </div>
+    <div class="scan-hint">IR sensor auto-triggers · or press MANUAL TRIGGER</div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="panel result-panel">
+    <div class="panel-hdr">
+      <span class="ph-title">DETECTION RESULT</span>
+      <span class="badge" id="resultBadge">IDLE</span>
+    </div>
+
+    <div class="result-hero">
+      <div class="result-orb" id="resultOrb">
+        <div class="orb-r r1"></div><div class="orb-r r2"></div>
+        <div class="orb-icon" id="resultIcon">❓</div>
+      </div>
+      <div class="result-class" id="detectedClass">WAITING...</div>
+      <div class="result-sub" id="resultSub">Waiting for IR sensor to detect object</div>
+    </div>
+
+    <!-- Confidence arc -->
+    <div class="conf-wrap">
+      <svg class="conf-svg" viewBox="0 0 220 130">
+        <defs>
+          <linearGradient id="arcG" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ff3c3c"/>
+            <stop offset="45%" stop-color="#ffd700"/>
+            <stop offset="100%" stop-color="#00ff88"/>
+          </linearGradient>
+        </defs>
+        <path d="M 25 110 A 85 85 0 0 1 195 110" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 25 110 A 85 85 0 0 1 195 110" fill="none" stroke="url(#arcG)" stroke-width="14" stroke-linecap="round"
+          id="confArc" stroke-dasharray="266.9" stroke-dashoffset="266.9"/>
+        <text x="22"  y="128" fill="rgba(255,255,255,0.25)" font-size="9" font-family="Share Tech Mono">0%</text>
+        <text x="110" y="30"  fill="rgba(255,255,255,0.25)" font-size="9" font-family="Share Tech Mono" text-anchor="middle">50%</text>
+        <text x="192" y="128" fill="rgba(255,255,255,0.25)" font-size="9" font-family="Share Tech Mono" text-anchor="end">100%</text>
+      </svg>
+      <div class="conf-center">
+        <span class="conf-num" id="confNum">--</span><span class="conf-pct">%</span>
+        <div class="conf-lbl">CONFIDENCE</div>
+      </div>
+    </div>
+
+    <div class="pill-row" id="pillRow">
+      <span class="pill" data-cat="plastic">♻ Plastic</span>
+      <span class="pill" data-cat="paper">📄 Paper</span>
+      <span class="pill" data-cat="metal">🔩 Metal</span>
+      <span class="pill" data-cat="organic">🌿 Organic</span>
+      <span class="pill" data-cat="ewaste">⚡ E-waste</span>
+      <span class="pill pill-r" data-cat="reject">🗑 Reject</span>
+    </div>
+
+    <div class="alert-box" id="alertBox">
+      <span id="alertIcon">ℹ</span>
+      <span id="alertText">System ready. IR sensor monitoring chute.</span>
+    </div>
+
+    <!-- Recalibrate button -->
+    <button class="btn-recal" onclick="recalibrate()">⟳ RECALIBRATE SERVOS</button>
+  </section>
+
+  <!-- HARDWARE SIM -->
+  <section class="panel hw-panel">
+    <div class="panel-hdr">
+      <span class="ph-title">HARDWARE — GPIO SIM</span>
+      <span class="badge badge-yellow" id="hwBadge">STANDBY</span>
+    </div>
+
+    <!-- GPIO pin map -->
+    <div class="gpio-map">
+      <div class="gpio-pin" id="gpin17"><span class="gpin-num">GPIO 17</span><span class="gpin-label">SERVO 1</span><span class="gpin-val" id="gval17">0°</span></div>
+      <div class="gpio-pin" id="gpin27"><span class="gpin-num">GPIO 27</span><span class="gpin-label">SERVO 2</span><span class="gpin-val" id="gval27">CLOSED</span></div>
+      <div class="gpio-pin" id="gpin22"><span class="gpin-num">GPIO 22</span><span class="gpin-label">IR IN</span><span class="gpin-val" id="gval22">CLEAR</span></div>
+    </div>
+
+    <!-- Servo 1 dial with actual angles -->
+    <div class="hw-block" id="hwS1">
+      <div class="hw-blk-hdr">⚙ SERVO 1 — BIN ROUTER (GPIO 17) <span class="hw-val" id="s1Angle">0°</span></div>
+      <div class="dial-wrap">
+        <div class="dial" id="dialEl">
+          <div class="dial-ring outer"></div>
+          <div class="dial-ring inner"></div>
+          <div class="dial-arm" id="dialArm"></div>
+          <div class="dial-pivot"></div>
+          <!-- Bin markers at exact angles -->
+          <span class="dmk" id="dmk-reject"  style="--a:15deg">R</span>
+          <span class="dmk" id="dmk-metal"   style="--a:45deg">M</span>
+          <span class="dmk" id="dmk-organic" style="--a:75deg">O</span>
+          <span class="dmk" id="dmk-plastic" style="--a:105deg">Pl</span>
+          <span class="dmk" id="dmk-paper"   style="--a:135deg">Pa</span>
+          <span class="dmk" id="dmk-ewaste"  style="--a:165deg">E</span>
+        </div>
+        <div class="dial-legend">
+          <div class="dl-item"><span class="dl-dot" style="background:#ff3c3c"></span>15° Reject</div>
+          <div class="dl-item"><span class="dl-dot" style="background:#00b4ff"></span>45° Metal</div>
+          <div class="dl-item"><span class="dl-dot" style="background:#64dd17"></span>75° Organic</div>
+          <div class="dl-item"><span class="dl-dot" style="background:#00ffe1"></span>105° Plastic</div>
+          <div class="dl-item"><span class="dl-dot" style="background:#00ff88"></span>135° Paper</div>
+          <div class="dl-item"><span class="dl-dot" style="background:#c864ff"></span>165° E-waste</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chute -->
+    <div class="chute-row">
+      <div class="chute-track"><div class="chute-fill" id="chuteFill"></div></div>
+      <div class="chute-lbl" id="chuteLbl">IDLE</div>
+    </div>
+
+    <!-- Servo 2 lid -->
+    <div class="hw-block" id="hwS2">
+      <div class="hw-blk-hdr">🔓 SERVO 2 — LID CONTROL (GPIO 27) <span class="hw-val" id="s2Status">CLOSED</span></div>
+      <div class="bin-scene">
+        <div class="bin3d">
+          <div class="bin-lid-wrap" id="lidWrap"><div class="bin-lid-vis"></div></div>
+          <div class="bin-body-vis">
+            <div class="bin-fill-vis" id="binFillVis"></div>
+            <div class="bin-emoji-vis" id="binEmoji">?</div>
+          </div>
+        </div>
+        <div class="bin-name-vis" id="binName">—</div>
+      </div>
+    </div>
+
+    <!-- Conveyor -->
+    <div class="hw-block" id="hwConv">
+      <div class="hw-blk-hdr">➡ CONVEYOR / CHUTE <span class="hw-val" id="convState">IDLE</span></div>
+      <div class="conv-wrap">
+        <div class="conv-track">
+          <div class="conv-belt" id="convBelt"></div>
+          <div class="conv-item" id="convItem">?</div>
+        </div>
+        <div class="conv-dest" id="convDest">[ BIN ]</div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- BOTTOM -->
+<div class="btm-grid">
+
+  <div class="panel log-panel">
+    <div class="panel-hdr">
+      <span class="ph-title">OPERATION LOG</span>
+      <button class="btn-sm" onclick="clearLog()">⌫ CLEAR</button>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-line sys">[ SYS ] QuantumX RPi Edition initialized · Awaiting IR trigger</div>
+    </div>
+  </div>
+
+  <div class="panel chart-panel">
+    <div class="panel-hdr">
+      <span class="ph-title">WASTE DISTRIBUTION</span>
+      <span class="badge" id="totalBadge">0 ITEMS</span>
+    </div>
+    <canvas id="wasteChart"></canvas>
+  </div>
+
+  <div class="panel stats-panel">
+    <div class="panel-hdr"><span class="ph-title">BIN FILL LEVELS</span></div>
+    <div class="bin-lvs">
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-plastic" style="--col:#00ffe1"></div></div><span id="bcnt-plastic">0</span><span class="blv-nm">Plastic 105°</span></div>
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-paper"   style="--col:#00ff88"></div></div><span id="bcnt-paper">0</span><span class="blv-nm">Paper 135°</span></div>
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-metal"   style="--col:#00b4ff"></div></div><span id="bcnt-metal">0</span><span class="blv-nm">Metal 45°</span></div>
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-organic" style="--col:#64dd17"></div></div><span id="bcnt-organic">0</span><span class="blv-nm">Organic 75°</span></div>
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-ewaste"  style="--col:#c864ff"></div></div><span id="bcnt-ewaste">0</span><span class="blv-nm">E-waste 165°</span></div>
+      <div class="blv"><div class="blv-bg"><div class="blv-bar" id="bbar-reject"  style="--col:#ff3c3c"></div></div><span id="bcnt-reject">0</span><span class="blv-nm">Reject 15°</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
