@@ -18,7 +18,7 @@ The dashboard features a real-time MJPEG live video stream, confidence meters, l
 
 ```
 Automatic-waste-segregation/
-├── WasteSegregator_RPi/      # Raspberry Pi Flask + YOLO Runtime
+├── backend/                  # Raspberry Pi Flask + YOLO Runtime
 │   ├── app.py                # Flask server, camera feed, and GPIO drivers
 │   ├── best.pt               # Trained YOLOv8 classification model checkpoint
 │   ├── static/               # Assets (CSS/JS) for RPi deployment
@@ -67,9 +67,9 @@ pip install flask ultralytics opencv-python RPi.GPIO
 ```
 
 ### 2. Startup Server
-Navigate to the Pi folder and launch Flask:
+Navigate to the backend folder and launch Flask:
 ```bash
-cd WasteSegregator_RPi
+cd backend
 python app.py
 ```
 Access the dashboard via the Raspberry Pi IP address: `http://<rpi-ip>:5000`.
