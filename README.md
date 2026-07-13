@@ -1,4 +1,4 @@
-# QuantumX – Automatic Waste Segregator with Computer Vision
+# Quantum X – Automatic Waste Segregator with Computer Vision
 
 QuantumX is a dual-purpose, research-grade automatic waste segregation platform integrating deep learning computer vision classification, physical hardware controls (Raspberry Pi + Servos + IR Sensors), and a premium responsive monitoring dashboard.
 
