@@ -1,8 +1,7 @@
 {
     "services": {
         "frontend": {
-            "root": "frontend",
-            "framework": null
+            "root": "frontend"
         },
         "backend": {
             "root": "backend",
